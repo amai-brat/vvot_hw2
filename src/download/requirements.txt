@@ -9,7 +9,7 @@ aiosignal==1.4.0
 attrs==25.4.0
     # via aiohttp
 boto3==1.42.1
-    # via form-receiver (pyproject.toml)
+    # via download (pyproject.toml)
 botocore==1.42.1
     # via
     #   boto3
@@ -19,7 +19,7 @@ certifi==2025.11.12
 charset-normalizer==3.4.4
     # via requests
 dotenv==0.9.9
-    # via form-receiver (pyproject.toml)
+    # via download (pyproject.toml)
 frozenlist==1.8.0
     # via
     #   aiohttp
@@ -51,7 +51,7 @@ python-dateutil==2.9.0.post0
 python-dotenv==1.2.1
     # via dotenv
 requests==2.32.5
-    # via form-receiver (pyproject.toml)
+    # via download (pyproject.toml)
 s3transfer==0.16.0
     # via boto3
 six==1.17.0
@@ -65,4 +65,4 @@ urllib3==2.5.0
 yarl==1.22.0
     # via aiohttp
 ydb==3.22.0
-    # via form-receiver (pyproject.toml)
+    # via download (pyproject.toml)

@@ -171,23 +171,24 @@ def handler(event, context):
         load_dotenv(".env")
         config = Config()
         
-        body = json.loads(event['body'])
-        task_id = body['task_id']
-        video_url = body['video_url']
-        
-        logger.info(f"Received data: task_id={task_id}, video_url={video_url}")
-        
-        if not is_yandex_disk_public_video(video_url):
-            change_status_in_db(config, task_id, "Ошибка", "Ссылка не ведет к публичному видео в Яндекс.Диск")
+        for message in event["messages"]:
+            body = json.loads(message['details']['message']['body'])
+            task_id = body['task_id']
+            video_url = body['video_url']
+            
+            logger.info(f"Received data: task_id={task_id}, video_url={video_url}")
+            
+            if not is_yandex_disk_public_video(video_url):
+                change_status_in_db(config, task_id, "Ошибка", "Ссылка не ведет к публичному видео в Яндекс.Диск")
+                return { 'statusCode': 200 }
+            else:
+                change_status_in_db(config, task_id, "В обработке", None)
+            
+            object_name = download_video_to_s3(config, task_id, video_url)
+
+            send_message_to_queue(config, task_id, object_name)
+
             return { 'statusCode': 200 }
-        else:
-            change_status_in_db(config, task_id, "В обработке", None)
-        
-        object_name = download_video_to_s3(config, task_id, video_url)
-
-        send_message_to_queue(config, task_id, object_name)
-
-        return { 'statusCode': 200 }
         
     except Exception as e:
         logger.error(f"Error in handler: {str(e)}")
