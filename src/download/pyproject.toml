@@ -1,8 +1,10 @@
 [project]
-name = "downloader"
+name = "download"
 version = "0.1.0"
 description = "Add your description here"
 requires-python = ">=3.13"
 dependencies = [
     "boto3>=1.42.0",
+    "requests>=2.32.5",
+    "ydb>=3.22.0",
 ]
