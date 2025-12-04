@@ -57,7 +57,7 @@ echo "$input_json" | jq -c '.messages[]' | while IFS= read -r message; do
     --data-urlencode "QueueUrl=$RECOGNIZE_SPEECH_QUEUE_URL" \
     --user "$AWS_ACCESS_KEY_ID:$AWS_SECRET_ACCESS_KEY" \
     --aws-sigv4 'aws:amz:ru-central1:sqs' \
-    https://message-queue.api.cloud.yandex.net/ 2>/dev/null 1>/dev/null
+    https://message-queue.api.cloud.yandex.net/ >&2
 
   echo "Completed processing task: $task_id" >&2
 done
