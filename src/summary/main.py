@@ -198,9 +198,6 @@ def handler(event, context):
             pdf_object_name = generate_s3_pdf_from_html(config, html_summary, task_id, lecture_name)
 
             change_status_in_db(config, task_id, "Успешно завершено", pdf_object_name)
-
-            # TODO: update tasks html?
-            # send_message_to_queue(config, "queue", "{}")
             
             return { 'statusCode': 200 }
         

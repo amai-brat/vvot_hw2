@@ -86,6 +86,7 @@ resource "yandex_storage_bucket" "bucket" {
   bucket     = "${var.prefix}-temp"
   access_key = yandex_iam_service_account_static_access_key.sa_static_key.access_key
   secret_key = yandex_iam_service_account_static_access_key.sa_static_key.secret_key
+  depends_on = [ yandex_resourcemanager_folder_iam_member.sa_storage_admin ]
 
   lifecycle_rule {
     id      = "temp"
@@ -108,6 +109,7 @@ resource "yandex_message_queue" "deadletter_queue" {
   name       = "${var.prefix}-deadletter-queue"
   access_key = yandex_iam_service_account_static_access_key.sa_static_key.access_key
   secret_key = yandex_iam_service_account_static_access_key.sa_static_key.secret_key
+  depends_on = [ yandex_resourcemanager_folder_iam_member.sa_ymq_admin ]
 }
 
 // form-receiver: function
@@ -448,5 +450,34 @@ resource "yandex_function" "summary" {
     S3_BUCKET_NAME        = yandex_storage_bucket.bucket.bucket
     YA_API_KEY            = yandex_iam_service_account_api_key.sa_api_key.secret_key
     FOLDER_ID             = var.folder_id
+  }
+}
+
+// fetch-ydb: function
+data "archive_file" "fetch_ydb_zip" {
+  type        = "zip"
+  output_path = "function-fetch-ydb.zip"
+  source_dir  = "../src/fetch-ydb"
+
+  excludes = ["__pycache__", "*.pyc", ".DS_Store", ".env", ".python-version", ".venv", "uv.lock"]
+}
+
+resource "yandex_function" "fetch_ydb" {
+  name               = "${var.prefix}-fetch-ydb"
+  description        = "Функция возвращает все задачи с YDB"
+  user_hash          = "v0.2"
+  runtime            = "python312"
+  entrypoint         = "main.handler"
+  memory             = "256"
+  execution_timeout  = "60"
+  folder_id          = var.folder_id
+  service_account_id = yandex_iam_service_account.sa.id
+  content {
+    zip_filename = data.archive_file.fetch_ydb_zip.output_path
+  }
+  environment = {
+    YDB_ENDPOINT          = "grpcs://${yandex_ydb_database_serverless.ydb.ydb_api_endpoint}"
+    YDB_DATABASE          = yandex_ydb_database_serverless.ydb.database_path
+    YDB_TASKS_TABLE_NAME  = yandex_ydb_table.tasks_table.path
   }
 }
