@@ -124,7 +124,7 @@ data "archive_file" "form_receiver_zip" {
 resource "yandex_function" "form-receiver" {
   name               = "${var.prefix}-form-receiver"
   description        = "Функция получает форму из API gateway, создаёт строку в YDB и отправляет сообщение в очередь download"
-  user_hash          = "v0.2"
+  user_hash          = data.archive_file.form_receiver_zip.output_sha256
   runtime            = "python312"
   entrypoint         = "main.handler"
   memory             = "128"
@@ -190,7 +190,7 @@ data "archive_file" "download_zip" {
 resource "yandex_function" "download" {
   name               = "${var.prefix}-download"
   description        = "Функция получает сообщение с очереди, скачивает в s3 video/* и отправляет сообщение c названием объекта в очередь extract-audio"
-  user_hash          = "v0.2"
+  user_hash          = data.archive_file.download_zip.output_sha256
   runtime            = "python312"
   entrypoint         = "main.handler"
   memory             = "1024"
@@ -263,7 +263,7 @@ resource "yandex_storage_object" "extract_audio_zip" {
 resource "yandex_function" "extract_audio" {
   name               = "${var.prefix}-extract-audio"
   description        = "Функция получает сообщение с очереди, выделяет аудио, сохраняет в s3 audio/* и отправляет сообщение c названием объекта в очередь recognize-speech"
-  user_hash          = "v0.2"
+  user_hash          = data.archive_file.extract_audio_zip.output_sha256
   runtime            = "bash-2204"
   entrypoint         = "handler.sh"
   memory             = "128"
@@ -326,7 +326,7 @@ data "archive_file" "recognize_speech_zip" {
 resource "yandex_function" "recognize_speech" {
   name               = "${var.prefix}-recognize-speech"
   description        = "Функция получает сообщение с очереди, отправляет задачу на распознавание текста и сохраняет об этом информацию в s3 speech-tasks/*"
-  user_hash          = "v0.2"
+  user_hash          = data.archive_file.recognize_speech_zip.output_sha256
   runtime            = "python312"
   entrypoint         = "main.handler"
   memory             = "1024"
@@ -368,7 +368,7 @@ data "archive_file" "recognize_speech_cron_zip" {
 resource "yandex_function" "recognize_speech_cron" {
   name               = "${var.prefix}-recognize-speech-cron"
   description        = "Функция запускается по cron, смотрит по всем задачам на распознавание в s3 speech-tasks/*. Если задача закончилась, сохраняет транскрипцию в s3 speech/* и отправляет сообщение в очередь summary"
-  user_hash          = "v0.2"
+  user_hash          = data.archive_file.recognize_speech_cron_zip.output_sha256
   runtime            = "python312"
   entrypoint         = "main.handler"
   memory             = "256"
@@ -429,9 +429,9 @@ data "archive_file" "summary_zip" {
 }
 
 resource "yandex_function" "summary" {
-  name               = "${var.prefix}-summmary"
+  name               = "${var.prefix}-summary"
   description        = "Функция получает сообщение с очереди, отправляет запрос в LLM для генерации HTML, из HTML генерируется PDF и сохраняется в s3 pdf/{task_id}/{lecture_name}.pdf"
-  user_hash          = "v0.2"
+  user_hash          = data.archive_file.summary_zip.output_sha256
   runtime            = "python312"
   entrypoint         = "main.handler"
   memory             = "1024"
@@ -465,7 +465,7 @@ data "archive_file" "fetch_ydb_zip" {
 resource "yandex_function" "fetch_ydb" {
   name               = "${var.prefix}-fetch-ydb"
   description        = "Функция возвращает все задачи с YDB"
-  user_hash          = "v0.2"
+  user_hash          = data.archive_file.fetch_ydb_zip.output_sha256
   runtime            = "python312"
   entrypoint         = "main.handler"
   memory             = "256"
