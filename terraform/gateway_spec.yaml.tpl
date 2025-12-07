@@ -43,6 +43,19 @@ paths:
         bucket: ${bucket_name}
         object: ${tasks_object_key}
         service_account_id: ${service_account_id}
+  /pdf/{file+}:
+    get:
+      parameters:
+        - in: path
+          name: file
+          schema:
+            type: string
+          required: true
+      x-yc-apigateway-integration:
+        bucket: ${bucket_name}
+        type: object_storage
+        service_account_id: ${service_account_id}
+        object: pdf/{file}
 x-yc-apigateway:
   cors:
     origin:
