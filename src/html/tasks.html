@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tasks</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: #f5f7fa;
+            color: #333;
+            line-height: 1.6;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 100%;
+            margin: 0 auto;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        
+        header {
+            background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+            color: white;
+            padding: 25px 30px;
+            text-align: center;
+        }
+        
+        h1 {
+            font-size: 2.2rem;
+            margin-bottom: 8px;
+        }
+        
+        .subtitle {
+            font-size: 1rem;
+            opacity: 0.9;
+            font-weight: 300;
+        }
+        
+        .table-container {
+            padding: 20px;
+            overflow-x: auto;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 800px;
+        }
+        
+        thead {
+            background-color: #f1f5fd;
+        }
+        
+        th {
+            padding: 16px 12px;
+            text-align: left;
+            font-weight: 600;
+            color: #444;
+            border-bottom: 2px solid #e0e6f5;
+        }
+        
+        td {
+            padding: 14px 12px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        tr:hover {
+            background-color: #f9fbfe;
+        }
+        
+        .status {
+            display: inline-block;
+        }
+        
+        a {
+            color: #4a6cf7;
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+        
+        a:hover {
+            color: #3a5ce5;
+            text-decoration: underline;
+        }
+        
+        .description-link {
+            word-break: break-all;
+        }
+        
+        .video-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #777;
+        }
+        
+        .empty-state h3 {
+            margin-bottom: 10px;
+            color: #555;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            font-size: 1.1rem;
+            color: #666;
+        }
+        
+        .loading-spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #4a6cf7;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .task-id {
+            font-family: monospace;
+            font-size: 0.9rem;
+            color: #666;
+            background-color: #f5f5f5;
+            padding: 3px 6px;
+            border-radius: 3px;
+        }
+        
+        .created-at {
+            white-space: nowrap;
+        }
+        
+        @media (max-width: 768px) {
+            .controls {
+                flex-direction: column;
+                gap: 15px;
+                align-items: flex-start;
+            }
+            
+            header {
+                padding: 20px;
+            }
+            
+            h1 {
+                font-size: 1.8rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Tasks</h1>
+        </header>
+        
+        <div class="table-container">
+            <div id="loading" class="loading">
+                <div class="loading-spinner"></div>
+                <p>Loading tasks from server...</p>
+            </div>
+            
+            <div id="emptyState" class="empty-state" style="display: none;">
+                <h3>No tasks found</h3>
+                <p>There are no tasks to display. Try refreshing or check if the server is running.</p>
+            </div>
+            
+            <table id="tasksTable" style="display: none;">
+                <thead>
+                    <tr>
+                        <th>Created At</th>
+                        <th>Task ID</th>
+                        <th>Lecture Name</th>
+                        <th>Video URL</th>
+                        <th>Status</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody id="tasksTableBody">
+                    <!-- Task rows will be inserted here by JavaScript -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const refreshBtn = document.getElementById('refreshBtn');
+            const tasksTable = document.getElementById('tasksTable');
+            const tasksTableBody = document.getElementById('tasksTableBody');
+            const loading = document.getElementById('loading');
+            const emptyState = document.getElementById('emptyState');
+            
+            let allTasks = [];
+            
+            // Function to fetch tasks from API
+            async function fetchTasks() {
+                try {
+                    loading.style.display = 'block';
+                    tasksTable.style.display = 'none';
+                    emptyState.style.display = 'none';
+                    
+                    const response = await fetch('/api/tasks');
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    
+                    json = await response.json();
+                    displayTasks(json.tasks);
+                } catch (error) {
+                    console.error('Error fetching tasks:', error);
+                    loading.style.display = 'none';
+                    emptyState.innerHTML = `
+                        <h3>Error Loading Tasks</h3>
+                        <p>Failed to fetch tasks from server. Please check if the API is running.</p>
+                        <p><small>Error: ${error.message}</small></p>
+                    `;
+                    emptyState.style.display = 'block';
+                }
+            }
+            
+            // Function to display tasks in the table
+            function displayTasks(tasks) {
+                loading.style.display = 'none';
+                
+                if (!tasks || tasks.length === 0) {
+                    emptyState.style.display = 'block';
+                    tasksTable.style.display = 'none';
+                    return;
+                }
+                
+                emptyState.style.display = 'none';
+                tasksTable.style.display = 'table';
+                
+                // Clear existing table rows
+                tasksTableBody.innerHTML = '';
+                
+                // Add each task as a row
+                tasks.forEach(task => {
+                    const row = document.createElement('tr');
+                    
+                    // Format created_at date
+                    const createdAt = new Date(task.created_at);
+                    const formattedDate = createdAt.toLocaleDateString() + ' ' + createdAt.toLocaleTimeString();
+                    
+                    let descriptionContent = task.description;
+                    if (task.description) {
+                        // Check if it's a web URL
+                        if (task.description.startsWith('http://') || 
+                            task.description.startsWith('https://') ||
+                            task.description.startsWith('www.')) {
+                            
+                            // Ensure URL has protocol for proper linking
+                            let url = task.description;
+                            if (url.startsWith('www.')) {
+                                url = 'https://' + url;
+                            }
+                            
+                            descriptionContent = `<a href="${url}" target="_blank" class="description-link">${task.description}</a>`;
+                        }
+                        // Check if it matches the PDF pattern: "pdf/{task_id}/{lecture_name}.pdf"
+                        else if (task.description.startsWith('pdf/') && task.description.endsWith('.pdf')) {
+                            // Extract lecture name from the path (the part after the last slash)
+                            const parts = task.description.split('/');
+                            const lectureFileName = parts[parts.length - 1]; // Gets "{lecture_name}.pdf"
+                            
+                            // Create the URL with leading slash
+                            const url = '/' + task.description; // Results in "/pdf/{task_id}/{lecture_name}.pdf"
+                            
+                            descriptionContent = `<a href="${url}" target="_blank" class="description-link">${lectureFileName}</a>`;
+                        }
+                    }
+                    
+                    // Create video link if available
+                    let videoContent = 'No URL';
+                    if (task.video_url) {
+                        videoContent = `<a href="${task.video_url}" target="_blank" class="video-link">
+                            ${task.video_url}
+                        </a>`;
+                    }
+                    
+                    row.innerHTML = `
+                        <td class="created-at">${formattedDate}</td>
+                        <td><span class="task-id">${task.task_id}</span></td>
+                        <td>${task.lecture_name || 'Untitled Lecture'}</td>
+                        <td>${videoContent}</td>
+                        <td><span class="status">${task.status}</span></td>
+                        <td>${descriptionContent || 'No description'}</td>
+                    `;
+                    
+                    tasksTableBody.appendChild(row);
+                });
+            }
+            
+            fetchTasks();
+            setInterval(fetchTasks, 30000);
+        });
+    </script>
+</body>
+</html>

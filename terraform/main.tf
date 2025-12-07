@@ -86,7 +86,7 @@ resource "yandex_storage_bucket" "bucket" {
   bucket     = "${var.prefix}-temp"
   access_key = yandex_iam_service_account_static_access_key.sa_static_key.access_key
   secret_key = yandex_iam_service_account_static_access_key.sa_static_key.secret_key
-  depends_on = [ yandex_resourcemanager_folder_iam_member.sa_storage_admin ]
+  depends_on = [yandex_resourcemanager_folder_iam_member.sa_storage_admin]
 
   lifecycle_rule {
     id      = "temp"
@@ -109,7 +109,7 @@ resource "yandex_message_queue" "deadletter_queue" {
   name       = "${var.prefix}-deadletter-queue"
   access_key = yandex_iam_service_account_static_access_key.sa_static_key.access_key
   secret_key = yandex_iam_service_account_static_access_key.sa_static_key.secret_key
-  depends_on = [ yandex_resourcemanager_folder_iam_member.sa_ymq_admin ]
+  depends_on = [yandex_resourcemanager_folder_iam_member.sa_ymq_admin]
 }
 
 // form-receiver: function
@@ -121,7 +121,7 @@ data "archive_file" "form_receiver_zip" {
   excludes = ["__pycache__", "*.pyc", ".DS_Store", ".env", ".python-version", ".venv", "uv.lock"]
 }
 
-resource "yandex_function" "form-receiver" {
+resource "yandex_function" "form_receiver" {
   name               = "${var.prefix}-form-receiver"
   description        = "Функция получает форму из API gateway, создаёт строку в YDB и отправляет сообщение в очередь download"
   user_hash          = data.archive_file.form_receiver_zip.output_sha256
@@ -140,9 +140,7 @@ resource "yandex_function" "form-receiver" {
     YDB_TASKS_TABLE_NAME  = yandex_ydb_table.tasks_table.path
     AWS_ACCESS_KEY_ID     = yandex_iam_service_account_static_access_key.sa_static_key.access_key
     AWS_SECRET_ACCESS_KEY = yandex_iam_service_account_static_access_key.sa_static_key.secret_key
-    // TODO: redirect to tasks page
-    REDIRECT_URL       = "https://ya.ru"
-    DOWNLOAD_QUEUE_URL = data.yandex_message_queue.download_queue.url
+    DOWNLOAD_QUEUE_URL    = data.yandex_message_queue.download_queue.url
   }
 }
 
@@ -476,8 +474,46 @@ resource "yandex_function" "fetch_ydb" {
     zip_filename = data.archive_file.fetch_ydb_zip.output_path
   }
   environment = {
-    YDB_ENDPOINT          = "grpcs://${yandex_ydb_database_serverless.ydb.ydb_api_endpoint}"
-    YDB_DATABASE          = yandex_ydb_database_serverless.ydb.database_path
-    YDB_TASKS_TABLE_NAME  = yandex_ydb_table.tasks_table.path
+    YDB_ENDPOINT         = "grpcs://${yandex_ydb_database_serverless.ydb.ydb_api_endpoint}"
+    YDB_DATABASE         = yandex_ydb_database_serverless.ydb.database_path
+    YDB_TASKS_TABLE_NAME = yandex_ydb_table.tasks_table.path
   }
+}
+
+// api gateway
+resource "yandex_storage_object" "form_html" {
+  bucket       = yandex_storage_bucket.bucket.bucket
+  key          = "form.html"
+  source       = "../src/html/form.html"
+  content_type = "text/html"
+}
+
+resource "yandex_storage_object" "tasks_html" {
+  bucket       = yandex_storage_bucket.bucket.bucket
+  key          = "tasks.html"
+  source       = "../src/html/tasks.html"
+  content_type = "text/html"
+}
+
+resource "yandex_api_gateway" "tasks_gateway" {
+  name      = "${var.prefix}-gateway"
+  folder_id = var.folder_id
+
+  spec = templatefile("./gateway_spec.yaml.tpl", {
+    api_name = "${var.prefix}-api"
+
+    bucket_name      = yandex_storage_bucket.bucket.bucket
+    index_object_key = yandex_storage_object.form_html.key
+    tasks_object_key = yandex_storage_object.tasks_html.key
+
+    service_account_id = yandex_iam_service_account.sa.id
+
+    fetch_ydb_function_id     = yandex_function.fetch_ydb.id
+    form_receiver_function_id = yandex_function.form_receiver.id
+  })
+}
+
+output "api_gateway_url" {
+  value       = yandex_api_gateway.tasks_gateway.domain
+  description = "API Gateway URL"
 }

@@ -134,10 +134,10 @@ def handler(event, context):
         return {
             'statusCode': 302,
             'headers': {
-                'Location': config.redirect_url,
+                'Location': "/tasks",
                 'Content-Type': 'text/plain'
             },
-            'body': f'Redirecting to {config.redirect_url}',
+            'body': f'Redirecting to /tasks',
             'isBase64Encoded': False
         }
         
