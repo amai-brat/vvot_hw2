@@ -17,9 +17,14 @@
 - YandexGPT API
 
 ## Запуск
-Необходим статически собранный ffmpeg по пути `src/extract-audio`.
-Например, `ffmpeg-linux-x64` [отсюда](https://github.com/eugeneware/ffmpeg-static/releases) 
+Необходим статически собранный `ffmpeg` по пути `src/extract-audio`.
+Например, `ffmpeg-linux-x64` [отсюда](https://github.com/eugeneware/ffmpeg-static/releases). 
+Затем сделать его исполняемым:
+```bash
+chmod +x ./src/extract-audio/ffmpeg
+```
 
+Запуск:
 ```bash
 export YC_TOKEN=$(yc iam create-token)
 
